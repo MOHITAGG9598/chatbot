@@ -2,63 +2,87 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import time
+import os
+
+# Inject custom CSS for the bot (if required, you can add the bot script here too)
+bot_css = """
+<style type='text/css'>
+    .embeddedServiceHelpButton .helpButton .uiButton {
+        background-color: #005290;
+        font-family: "Arial", sans-serif;
+    }
+    .embeddedServiceHelpButton .helpButton .uiButton:focus {
+        outline: 1px solid #005290;
+    }
+</style>
+"""
+
+# Inject the custom CSS into the Streamlit app
+st.markdown(bot_css, unsafe_allow_html=True)
 
 # Title of the app
-st.title('Simple Interactive Dashboard')
+st.title('Intern Performance Dashboard')
 
-# Text input widget
-name = st.text_input('Enter your name:', 'Type here...', key='name_input')
-st.write(f'Hello, {name}!')
+# Admin authentication
+admin_password = "admin123"
+password = st.text_input("Enter admin password:", type="password")
+is_admin = password == admin_password
 
-# Slider widget
-age = st.slider('Select your age:', 0, 100, 25, key='age_slider')
-st.write(f'You are {age} years old.')
+if is_admin:
+    st.success("Admin access granted")
 
-# Select box widget
-options = ['Python', 'Java', 'C++', 'JavaScript']
-language = st.selectbox('What is your favorite programming language?', options, key='language_select')
-st.write(f'You selected: {language}')
+    # Input fields for intern details
+    intern_name = st.text_input('Enter intern name:', 'Type here...', key='intern_name_input')
+    date = st.date_input('Date:', key='date_input')
+    in_time = st.time_input('In Time:', key='in_time_input')
+    out_time = st.time_input('Out Time:', key='out_time_input')
+    performance = st.slider('Performance (1 to 10):', 1, 10, 5, key='performance_slider')
+    remarks = st.text_input('Remarks:', 'Type here...', key='remarks_input')
 
-# Checkbox widget
-if st.checkbox('Show line chart', key='show_chart_checkbox'):
-    # Generate some data for the line chart
-    chart_data = pd.DataFrame(
-        np.random.randn(20, 3),
-        columns=['a', 'b', 'c']
-    )
-    st.line_chart(chart_data)
+    # Button to submit data
+    if st.button('Submit'):
+        # Append the new record to a CSV file
+        record = {
+            'Name': intern_name,
+            'Date': str(date),
+            'In Time': str(in_time),
+            'Out Time': str(out_time),
+            'Performance': performance,
+            'Remarks': remarks
+        }
+        record_df = pd.DataFrame([record])
+        if os.path.exists('intern_records.csv'):
+            record_df.to_csv('intern_records.csv', mode='a', header=False, index=False)
+        else:
+            record_df.to_csv('intern_records.csv', mode='w', header=True, index=False)
+        st.success('Record added successfully!')
 
-# Progress bar widget
-st.write('Progress Bar Example')
-progress_bar = st.progress(0)
-for i in range(101):
-    time.sleep(0.01)
-    progress_bar.progress(i)
+    # Display existing records with edit options
+    st.write('### Intern Records')
+    try:
+        records_df = pd.read_csv('intern_records.csv')
+        edited_df = st.data_editor(records_df, num_rows="dynamic")
 
-# Expander widget
-with st.expander('See explanation'):
-    st.write("""
-        This is a simple interactive Streamlit app to demonstrate various widgets.
-        You can enter your name, select your age, choose your favorite programming language,
-        and see a line chart if you select the checkbox.
-    """)
+        # Save the edited dataframe back to the CSV
+        if st.button('Save Changes'):
+            edited_df.to_csv('intern_records.csv', index=False)
+            st.success('Changes saved successfully!')
+    except FileNotFoundError:
+        st.write('No records found. Please add some records.')
 
-# Sidebar widgets
-st.sidebar.header('Sidebar Controls')
-sidebar_name = st.sidebar.text_input('Enter your name:', 'Type here...', key='sidebar_name_input')
-st.sidebar.write(f'Hello, {sidebar_name} from the sidebar!')
+else:
+    if password:
+        st.error("Invalid admin password")
+    # Display records in read-only mode
+    st.write('### Intern Records')
+    try:
+        records_df = pd.read_csv('intern_records.csv')
+        st.write(records_df)
+    except FileNotFoundError:
+        st.write('No records found. Please add some records.')
 
-sidebar_age = st.sidebar.slider('Select your age:', 0, 100, 25, key='sidebar_age_slider')
-st.sidebar.write(f'You are {sidebar_age} years old.')
-
-sidebar_language = st.sidebar.selectbox('What is your favorite programming language?', options, key='sidebar_language_select')
-st.sidebar.write(f'You selected: {sidebar_language}')
-
-# Displaying dataframe
-st.write('Random Dataframe')
-data = pd.DataFrame({
-    'first column': np.random.randn(10),
-    'second column': np.random.randn(10)
-})
-st.write(data)
+# Additional info
+st.write("""
+This is a simple interactive Streamlit app to manage and track intern records, including in-time, out-time, performance, and remarks on a daily basis.
+""")
 
